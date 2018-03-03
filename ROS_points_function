@@ -1,0 +1,38 @@
+# Load packages for calculator
+library(geosphere)
+library(NISTunits)
+library(base)
+library(aspace)
+
+## New DIRECTION function to determine clockwise or counter-clockwise "interpretation"
+DIRECTION <- function(bearingT1T2, bearingT1T3, ThetaAdeg){
+  ifelse(bearingT1T2>0 & bearingT1T3>0 & bearingT1T2>bearingT1T3, bearingT1T2-ThetaAdeg
+ ,ifelse(bearingT1T2>0 & bearingT1T3>0 & bearingT1T2<bearingT1T3, bearingT1T2+ThetaAdeg
+ ,ifelse(bearingT1T2<0 & bearingT1T3<0 & bearingT1T2>bearingT1T3, bearingT1T2-ThetaAdeg
+ ,ifelse(bearingT1T2<0 & bearingT1T3<0 & bearingT1T2<bearingT1T3, bearingT1T2+ThetaAdeg
+ ,ifelse(bearingT1T2>0 & bearingT1T2<90 & bearingT1T3<0 & bearingT1T3> -90, bearingT1T2-ThetaAdeg
+ ,ifelse(bearingT1T2<0 & bearingT1T2> -90 & bearingT1T3>0 & bearingT1T3<90, bearingT1T2+ThetaAdeg
+ ,ifelse(bearingT1T2>90 & bearingT1T3< -90 & bearingT1T2+ThetaAdeg>180, bearingT1T2+ThetaAdeg-360
+ ,ifelse(bearingT1T2>90 & bearingT1T3< -90 & bearingT1T2+ThetaAdeg<180, bearingT1T2+ThetaAdeg
+ ,ifelse(bearingT1T2< -90 & bearingT1T3>90 & bearingT1T2-ThetaAdeg< -180, bearingT1T2-ThetaAdeg+360
+ ,ifelse(bearingT1T2< -90 & bearingT1T3>90 & bearingT1T2-ThetaAdeg> -180, bearingT1T2-ThetaAdeg, FALSE))))))))))
+}
+
+# Simple Simard function for Rate-of-Spread
+# Units: length in meters, time depends on if user enters minutes or seconds (regardless, must enter fractional time, e.g, 1.86 minutes)
+ROS_points <- function(T1, LONG1, LAT1, T2, LONG2, LAT2, T3, LONG3, LAT3) {
+  LengthT1T2 <- distHaversine(c(LONG1, LAT1), c(LONG2, LAT2))
+  LengthT1T3 <- distHaversine(c(LONG1, LAT1), c(LONG3, LAT3))
+  LengthT2T3 <- distHaversine(c(LONG2, LAT2), c(LONG3, LAT3))
+  bearingT1T2 <- bearing(c(LONG1,LAT1),c(LONG2, LAT2))
+  bearingT1T3 <- bearing(c(LONG1,LAT1),c(LONG3, LAT3))
+  bearingT2T3 <- bearing(c(LONG2,LAT2),c(LONG3, LAT3))
+  RefT1T2bearing <- bearing(c(LONG1,LAT1),c(LONG2,LAT2))
+  AngleArad <- acos(((LengthT1T3^2+LengthT1T2^2-LengthT2T3^2)/(2*LengthT1T3*LengthT1T2)))
+  AngleAdeg <- NISTradianTOdeg(AngleArad)
+  ThetaArad <- atan((T3-T1)/(T2-T1)*(LengthT1T2/LengthT1T3*sin(AngleArad))-(1/(tan(AngleArad))))
+  ThetaAdeg <- NISTradianTOdeg(ThetaArad)
+  DIR <- DIRECTION(bearingT1T2, bearingT1T3, ThetaAdeg)
+  ROS <- LengthT1T2*cos(ThetaArad)/(T2-T1)
+  list(AngleAdeg, ThetaArad, ThetaAdeg, ROS, DIR)
+}
